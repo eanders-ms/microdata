@@ -120,10 +120,10 @@ namespace microcode {
             return xfrm
         }
 
-        public buildSprite(bmp: Bitmap) {
+        public buildSprite(img: Bitmap) {
             this.icon = new Sprite({
                 parent: this,
-                bmp,
+                img,
             })
             this.icon.xfrm.parent = this.xfrm
         }
@@ -201,6 +201,7 @@ namespace microcode {
         public selected: boolean
         private dynamicBoundaryColorsOn: boolean
         private boundaryColor: number
+        public pressable: boolean
 
         public get ariaId(): string {
             return (
@@ -219,7 +220,7 @@ namespace microcode {
                 value: this.ariaId,
                 force,
             }
-            accessibility.setLiveContent(msg)
+            accessibility.setLiveContent(msg) 
         }
 
         constructor(opts: {
@@ -231,7 +232,8 @@ namespace microcode {
             y: number
             onClick?: (button: Button) => void,
             dynamicBoundaryColorsOn?: boolean
-            boundaryColor?: number
+            boundaryColor?: number,
+            flipIcon?: boolean
         }) {
             super(
                 opts.x,
@@ -244,7 +246,13 @@ namespace microcode {
             this.onClick = opts.onClick
             this.buildSprite(this.image_())
 
+            if (opts.flipIcon) {
+                this.icon.image = this.icon.image.clone()
+                this.icon.image.flipY()
+            }
+
             this.selected = false
+            this.pressable = true
 
             if (opts.dynamicBoundaryColorsOn == null) {
                 opts.dynamicBoundaryColorsOn = false
@@ -264,6 +272,9 @@ namespace microcode {
             return this.iconId
         }
 
+        public toggleDynamicBoundaryColors() {
+            this.dynamicBoundaryColorsOn = !this.dynamicBoundaryColorsOn
+        }
 
         public toggleSelected(): void {
             this.selected = !this.selected
@@ -274,18 +285,19 @@ namespace microcode {
                 ? icons.get(this.iconId)
                 : this.iconId
         }
-        public setIcon(iconId: string, bmp?: Bitmap) {
+        
+        public setIcon(iconId: string, img?: Bitmap) {
             this.iconId = iconId
-            if (bmp) this.icon.setImage(bmp)
+            if (img) this.icon.setImage(img)
             else this.buildSprite(this.image_())
         }
 
         public clickable() {
-            return this.visible() && this.onClick != null
+            return this.visible() && this.pressable
         }
 
         public click() {
-            if (!this.visible()) {
+            if (!this.clickable()) {
                 return
             }
             if (this.onClick) {
@@ -293,15 +305,11 @@ namespace microcode {
             }
         }
 
-
         public draw() {
             super.draw()
 
             if (this.dynamicBoundaryColorsOn) {
-                let boundaryColour = this.boundaryColor // Red
-                if (this.selected) {
-                    boundaryColour = 7 // green
-                }
+                const boundaryColour = (this.selected && this.pressable) ? 7: this.boundaryColor 
 
                 for (let dist = 1; dist <= 3; dist++) {
                     Screen.outlineBoundsXfrm(

@@ -1,11 +1,11 @@
-namespace microcode {
+ namespace microcode {
     export class Screen {
         private static image_: Bitmap
 
-        public static WIDTH = screen.width
-        public static HEIGHT = screen.height
-        public static HALF_WIDTH = screen.width >> 1
-        public static HALF_HEIGHT = screen.height >> 1
+        public static WIDTH = screen().width
+        public static HEIGHT = screen().height
+        public static HALF_WIDTH = screen().width >> 1
+        public static HALF_HEIGHT = screen().height >> 1 
         public static LEFT_EDGE = -Screen.HALF_WIDTH
         public static RIGHT_EDGE = Screen.HALF_WIDTH
         public static TOP_EDGE = -Screen.HALF_HEIGHT
@@ -45,26 +45,26 @@ namespace microcode {
         }
         public static get image(): Bitmap {
             if (!Screen.image_) {
-                Screen.image_ = screen
+                Screen.image_ = screen()
                 Screen.updateBounds()
             }
             return Screen.image_
         }
         public static resetScreenImage() {
-            Screen.image_ = screen
+            Screen.image_ = screen()
             Screen.updateBounds()
         }
 
         public static setImageSize(width: number, height: number) {
-            Screen.image_ = bitmap.create(width, height)
+            Screen.image_ = bitmaps.create(width, height)
             Screen.updateBounds()
         }
 
-        public static drawTransparentBitmap(from: Bitmap, x: number, y: number) {
+        public static drawTransparentImage(from: Bitmap, x: number, y: number) {
             Screen.image.drawTransparentBitmap(from, Screen.x(x), Screen.y(y))
         }
 
-        public static drawTransparentBitmapXfrm(
+        public static drawTransparentImageXfrm(
             xfrm: Affine,
             from: Bitmap,
             x: number,
@@ -341,7 +341,7 @@ namespace microcode {
             x: number,
             y: number,
             color?: number,
-            font?: bitmap.Font,
+            font?: bitmaps.Font,
             offsets?: texteffects.TextEffectState[]
         ) {
             Screen.image.print(

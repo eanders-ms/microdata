@@ -1,13 +1,19 @@
 {
-    "name": "microdata",
-    "version": "1.0.00",
+    "name": "MicroData",
+    "version": "1.5.2",
     "description": "Data science with micro:bit v2",
     "dependencies": {
         "core": "*",
         "radio": "*",
         "microphone": "*",
-        "arcadeshield": "github:microsoft/pxt-arcadeshield#smartshield",
-        "datalogger": "*"
+        "datalogger": "*",
+        "pxt-arcadeshield": "github:microsoft/pxt-arcadeshield#v0.1.9",
+        "jacdac": "github:microsoft/pxt-jacdac#v1.9.28",
+        "jacdac-light-level": "github:microsoft/pxt-jacdac/light-level#v1.9.28",
+        "jacdac-soil-moisture": "github:microsoft/pxt-jacdac/soil-moisture#v1.9.28",
+        "jacdac-distance": "github:microsoft/pxt-jacdac/distance#v1.9.28",
+        "jacdac-temperature": "github:microsoft/pxt-jacdac/temperature#v1.9.28",
+        "jacdac-flex": "github:microsoft/pxt-jacdac/flex#v1.9.28"
     },
     "files": [
         "keymap.ts",
@@ -17,9 +23,8 @@
         "accessibility.ts",
         "button.ts",
         "component.ts",
-        "assets.ts",        
+        "assets.ts",
         "scene.ts",
-        "tiles.ts",
         "app.ts",
         "sprite.ts",
         "cursor.ts",
@@ -35,20 +40,23 @@
         "options.ts",
         "tooltips.ts",
         "utils.ts",
-        "liveDataViewer.ts",
-        "tabularDataViewer.ts",
-        "sensorSelect.ts",
-        "dataViewSelect.ts",
-        "recordingConfig.ts",
-        "recordingConfigSelection.ts",
         "sensors.ts",
-        "fauxDataLogger.ts",
+        "jacdacSensors.ts",
+        "liveDataViewer.ts",
+        "dataViewSelect.ts",
+        "loggingConfig.ts",
+        "sensorSelect.ts",
         "dataRecorder.ts",
-        "generateGraph.ts",
-        "sensorEvent.ts"
+        "tabularDataViewer.ts",
+        "generateGraph.ts"
     ],
     "testFiles": [],
+    "targetVersions": {
+        "target": "7.1.13",
+        "targetId": "microbit"
+    },
     "supportedTargets": [
         "microbit"
-    ]
+    ],
+    "preferredEditor": "tsprj"
 }

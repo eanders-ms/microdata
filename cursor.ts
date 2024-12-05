@@ -1,4 +1,9 @@
 namespace microcode {
+    /**
+     * See .setOutlineColour()
+     */
+    const DEFAULT_CURSOR_OUTLINE_COLOUR = 9
+
     export type CursorCancelHandler = () => void
 
     export enum CursorDir {
@@ -10,7 +15,7 @@ namespace microcode {
     }
 
     export interface CursorState {
-        navigator: INavigator
+        navigator: INavigator 
         pos: Vec2
         ariaId: string
         size: Bounds
@@ -27,6 +32,7 @@ namespace microcode {
         size: Bounds
         visible = true
 
+        resetOutlineColourOnMove = false
         private cursorOutlineColour: number
 
         constructor() {
@@ -34,10 +40,14 @@ namespace microcode {
             this.cancelHandlerStack = []
             this.moveDest = new Vec2()
             this.setSize()
-            this.cursorOutlineColour = 9
+            
+            this.cursorOutlineColour = DEFAULT_CURSOR_OUTLINE_COLOUR
         }
 
         public moveTo(pos: Vec2, ariaId: string, sizeHint: Bounds) {
+            if (this.resetOutlineColourOnMove)
+                this.setOutlineColour(DEFAULT_CURSOR_OUTLINE_COLOUR)
+
             this.setSize(sizeHint)
             this.moveDest.copyFrom(pos)
             this.moveStartMs = control.millis()
@@ -66,7 +76,7 @@ namespace microcode {
             else this.size = size.clone()
         }
 
-        public setOutlineColour(colour: number) {
+        public setOutlineColour(colour: number = 9) { // 9 is the DEFAULT_CURSOR_OUTLINE_COLOUR
             this.cursorOutlineColour = colour
         }
 
@@ -93,7 +103,7 @@ namespace microcode {
 
         public click(): boolean {
             let target = this.navigator.getCurrent() //.sort((a, b) => a.z - b.z);
-            if (target) {
+            if (target && target.clickable()) {
                 target.toggleSelected()
                 target.click()
                 profile()

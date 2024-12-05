@@ -1,9 +1,15 @@
 namespace microcode {
+    /**
+     * Used to control the flow between scenes,
+     * The SensorSelect scene is used to set the sensors before the RecordData, DistributedLogging and LiveDataViewer scenes
+     * This enum may be passed to the constructors of these scenes so that they can dynamically control this flow.
+     */
     export enum CursorSceneEnum {
         LiveDataViewer,
         SensorSelect,
-        MeasurementConfigSelect,
+        RecordingConfigSelect,
         RecordData,
+        DistributedLogging
     }
     
     export class CursorScene extends Scene {
@@ -13,7 +19,7 @@ namespace microcode {
 
         constructor(app: App, navigator?: INavigator) {
             super(app, "scene")
-            this.color = 11
+            this.backgroundColor = 11
             this.navigator = navigator
         }
 
@@ -28,7 +34,7 @@ namespace microcode {
                     e.kind === FORWARD_BUTTON_ERROR_KIND
                 )
                     return
-                else throw e
+                else throw e 
             }
         }
 
@@ -145,15 +151,56 @@ namespace microcode {
     export class CursorSceneWithPriorPage extends CursorScene {
         private goBack1PageFn: () => void;
 
-        constructor(app: App, goBack1PageFn: () => void) {
+        constructor(app: App, goBack1PageFn: () => void, navigator?: INavigator) {
             super(app)
-            this.color = 11
-
+            this.backgroundColor = 11
+            
+            if (navigator)
+                this.navigator = navigator
+            else
+                this.navigator = null
             this.goBack1PageFn = goBack1PageFn
         }
 
         /* override */ startup() {
-            super.startup()
+            control.onEvent(
+                ControllerButtonEvent.Pressed,
+                controller.right.id,
+                () => this.moveCursor(CursorDir.Right)
+            )
+            control.onEvent(
+                ControllerButtonEvent.Pressed,
+                controller.up.id,
+                () => this.moveCursor(CursorDir.Up)
+            )
+            control.onEvent(
+                ControllerButtonEvent.Pressed,
+                controller.down.id,
+                () => this.moveCursor(CursorDir.Down)
+            )
+            control.onEvent(
+                ControllerButtonEvent.Pressed,
+                controller.left.id,
+                () => this.moveCursor(CursorDir.Left)
+            )
+
+            // click
+            const click = () => this.cursor.click()
+            control.onEvent(
+                ControllerButtonEvent.Pressed,
+                controller.A.id,
+                click
+            )
+            control.onEvent(
+                ControllerButtonEvent.Pressed,
+                controller.A.id + keymap.PLAYER_OFFSET,
+                click
+            )
+            control.onEvent(
+                ControllerButtonEvent.Pressed,
+                controller.B.id,
+                () => this.back()
+            )
         
             control.onEvent(
                 ControllerButtonEvent.Pressed,
@@ -163,7 +210,9 @@ namespace microcode {
 
             this.cursor = new Cursor()
             this.picker = new Picker(this.cursor)
-            this.navigator = new RowNavigator()
+
+            if (this.navigator == null)
+                this.navigator = new RowNavigator()
             this.cursor.navigator = this.navigator
         }
     }

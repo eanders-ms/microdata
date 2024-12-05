@@ -1,29 +1,48 @@
 namespace microcode {
+    /** Number of sensor information boxes that can fit onto the screen at once*/
     const MAX_SENSORS_ON_SCREEN: number = 5
+    /** The colours that will be used for the lines & sensor information boxes */
     const SENSOR_BOX_COLORS: number[] = [2,3,4,6,7,9]
+    /** The colours that will be used for writing the information about the sensor. */
+    const SENSOR_BOX_TEXT_COLORS: number[] = [1,1,1,1,15,15]
 
+    /**
+     * Responsible for invoking the logging commands for each sensor,
+     * Presents information about each sensor's state via colourful collapsing boxes
+     * 
+     * Sensors are logged via a scheduler
+     */
     export class DataRecorder extends Scene {
+        /**  */
+        private scheduler: SensorScheduler;
+        /** For displaying their status on the screen and passing to the scheduler. */
         private sensors: Sensor[]
+        /** For faster looping, modulo calculation when pressing UP or DOWN */
+        private numberOfSensors: number;
+        /** Sensor to be shown */
+        private currentSensorIndex: number;
+        /** Last sensor on the screen */
+        private sensorIndexOffset: number;
+        /** For the currentSensorIndex */
+        private sensorBoxColor: number;
 
-        // UI:
-        private currentSensorIndex: number
-        private sensorIndexOffset: number
-        private sensorBoxColor: number
+        private showCancelRecordingScreen: boolean;
+        private currentlyCancelling: boolean
+        private yesBtn: Sprite // currentBtn = 0
+        private noBtn: Sprite // currentBtn = 1
 
         constructor(app: App, sensors: Sensor[]) {
             super(app, "dataRecorder")
 
-            new FauxDataLogger(sensors)
-
+            this.scheduler = new SensorScheduler(sensors)
             this.sensors = sensors
-            this.sensorIndexOffset = 0
-            this.currentSensorIndex = 0
-            this.sensorBoxColor = 16
+            this.numberOfSensors = sensors.length
 
-            // Start logging:
-            this.sensors.forEach((sensor) => {
-                sensor.log()
-            })
+            this.sensorIndexOffset = 0 
+            this.currentSensorIndex = 0
+            this.sensorBoxColor = 15
+            this.showCancelRecordingScreen = false;
+            this.currentlyCancelling = false;
 
             //---------------
             // User Controls:
@@ -34,8 +53,29 @@ namespace microcode {
                 ControllerButtonEvent.Pressed,
                 controller.B.id,
                 () => {
-                    this.app.popScene()
-                    this.app.pushScene(new Home(this.app))
+                    if (this.scheduler.loggingComplete()) {
+                        this.app.popScene()
+                        this.app.pushScene(new Home(this.app))
+                    }
+
+                    else {
+                        this.showCancelRecordingScreen = !this.showCancelRecordingScreen
+                    }
+                }
+            )
+
+            // Clear whatever A was previously bound to
+            control.onEvent(
+                ControllerButtonEvent.Pressed,
+                controller.A.id,
+                () => {
+                    if (this.showCancelRecordingScreen) {
+                        this.currentlyCancelling = true
+                        this.scheduler.stop()
+
+                        this.app.popScene()
+                        this.app.pushScene(new Home(this.app))
+                    }
                 }
             )
 
@@ -46,9 +86,8 @@ namespace microcode {
                 () => {
                     this.currentSensorIndex = Math.max(0, this.currentSensorIndex - 1)
 
-                    if (this.sensorIndexOffset > 0) {
+                    if (this.sensorIndexOffset > 0)
                         this.sensorIndexOffset = Math.max(0, this.sensorIndexOffset - 1)
-                    }
                     
                     this.update()
                 }
@@ -59,16 +98,38 @@ namespace microcode {
                 ControllerButtonEvent.Pressed,
                 controller.down.id,
                 () => {
-                    this.currentSensorIndex = Math.min(this.currentSensorIndex + 1, this.sensors.length - 1)
+                    this.currentSensorIndex = Math.min(this.currentSensorIndex + 1, this.numberOfSensors - 1)
 
-                    if (this.currentSensorIndex > 4) {
-                        this.sensorIndexOffset = Math.min(this.sensorIndexOffset + 1, this.sensors.length - 5)
-                    }
+                    if (this.currentSensorIndex > 4)
+                        this.sensorIndexOffset = Math.min(this.sensorIndexOffset + 1, this.numberOfSensors - 5)
 
                     this.update()
                 }
             )
+
+
+            // For cancelling the current recording:
+
+            this.yesBtn = new Sprite({ img: icons.get("tile_button_a") })
+            this.yesBtn.bindXfrm(new Affine())
+            this.yesBtn.xfrm.parent = new Affine()
+            this.yesBtn.xfrm.worldPos.x = Screen.HALF_WIDTH
+            this.yesBtn.xfrm.worldPos.y = Screen.HALF_HEIGHT
+            this.yesBtn.xfrm.localPos.x = -40
+            this.yesBtn.xfrm.localPos.y = 12
+
+            this.noBtn = new Sprite({ img: icons.get("tile_button_b") })
+            this.noBtn.bindXfrm(new Affine())
+            this.noBtn.xfrm.parent = new Affine()
+            this.noBtn.xfrm.worldPos.x = Screen.HALF_WIDTH
+            this.noBtn.xfrm.worldPos.y = Screen.HALF_HEIGHT
+            this.noBtn.xfrm.localPos.x = 40
+            this.noBtn.xfrm.localPos.y = 12
+
+            this.log()
         }
+ 
+        log() {this.scheduler.start()}
 
         update(): void {
             Screen.fillRect(
@@ -79,114 +140,173 @@ namespace microcode {
                 0xc
             )
 
-
             // Check if all sensors have finished their work:
-            let recordingsComplete = true
-            for (let i = 0; i < this.sensors.length; i++) {
-                if (this.sensors[i].config.measurements > 0) {
-                    recordingsComplete = false
-                    break
-                }
-            }
-
-            if (recordingsComplete) {
-                screen.printCenter("Data Logging Complete.", (screen.height / 2) - 10);
-                screen.printCenter("Press B to back out.", screen.height / 2);
+            if (this.scheduler.loggingComplete()) {
+                screen().printCenter("Data Logging Complete.", (screen().height / 2) - 10);
+                screen().printCenter("Press B to back out.", screen().height / 2);
             }
 
             else {
-                screen.printCenter("Recording data...", 4);
+                screen().printCenter("Recording data...", 4);
                 let y = 16
 
-                for (let i = this.sensorIndexOffset; i < this.sensors.length; i++) {
-                    if (i - this.sensorIndexOffset > MAX_SENSORS_ON_SCREEN) {
+                for (let i = this.sensorIndexOffset; i < this.numberOfSensors; i++) {
+                    if (i - this.sensorIndexOffset > MAX_SENSORS_ON_SCREEN)
                         break
-                    }
                     
                     // Get the colour for this box
                     this.sensorBoxColor = SENSOR_BOX_COLORS[i % SENSOR_BOX_COLORS.length]
 
+                    const boxWidth: number = 142
+
+                    // Draw box as collapsed:
                     if (i != this.currentSensorIndex) {
-                        screen.fillRect(
+                        screen().fillRect(
                             5,
                             y,
-                            142,
+                            boxWidth,
                             16,
                             16
                         )
                         
-                        screen.fillRect(
+                        screen().fillRect(
                             7,
                             y,
-                            145,
+                            boxWidth + 3,
                             14,
                             this.sensorBoxColor
                         )
 
-                        screen.print(
-                            this.sensors[i].name,
+                        screen().print(
+                            this.sensors[i].getName(),
                             12,
                             y + 2,
                             15
                         )
                     }
 
+                    // Box is selected: Draw all information:
                     else {
-                        screen.fillRect(
+                        screen().fillRect(
                             5,
                             y,
-                            142,
-                            47,
-                            16
+                            boxWidth,
+                            62,
+                            15
                         )
 
-                        screen.fillRect(
+                        screen().fillRect(
                             7,
                             y,
-                            145,
-                            45,
+                            boxWidth + 3,
+                            60,
                             this.sensorBoxColor
                         )
 
+                        //-------------------------------
+                        // Information inside sensor box:
+                        //-------------------------------
+
                         const sensor = this.sensors[i]
-                        screen.print(
-                            sensor.name,
+                        screen().print(
+                            sensor.getName(),
                             12,
                             y + 2,
                             15
                         )
 
-                        let sensorInfo: string[]
-                        if (sensor.loggingMode == SensorLoggingMode.RECORDING) {
-                            const config = sensor.config as RecordingConfig
-                            sensorInfo = [
-                                config.period / 1000 + " second period", 
-                                config.measurements.toString() + " measurements left",
-                                ((sensor.config.measurements * config.period) / 1000).toString() + " seconds left"
-                            ]
-                        }
-
-                        else {
-                            const config = sensor.config as EventConfig
-                            sensorInfo = [
-                                config.measurements.toString() + " events left",
-                                "Logging " + config.inequality + " " + config.comparator + " events",
-                                sensor.lastLoggedEventDescription
-                            ]
-                        }
-
-                        sensorInfo.forEach((info) => {
+                        //------------------------------
+                        // Write the sensor information:
+                        //------------------------------
+                        const sensorInfo: string[] = (sensor.isInEventMode) ? sensor.getEventInformation() : sensor.getRecordingInformation();
+                        sensorInfo.forEach((info, idx) => {
                             y += 12
-                            screen.print(
+                            screen().print(
                                 info,
                                 24,
                                 y,
-                                15
+                                SENSOR_BOX_TEXT_COLORS[idx]
                             )
                         });
                     }
 
                     y += 14
+                }
+
+                if (this.showCancelRecordingScreen) {
+                    const headerX = Screen.HALF_WIDTH // Log has data in it
+
+                    // Outline:
+                    screen().fillRect(
+                        Screen.HALF_WIDTH - 65,
+                        Screen.HALF_HEIGHT - 30,
+                        130 + 2,
+                        60 + 2,
+                        15 // Black
+                    )
+
+                    screen().fillRect(
+                        Screen.HALF_WIDTH - 65,
+                        Screen.HALF_HEIGHT - 30,
+                        130,
+                        60,
+                        4 // Orange
+                    )
+
+                    const tutorialTextLength = ("Cancel recording?".length * font.charWidth)
+                    screen().print(
+                        "Cancel recording?",
+                        headerX - (tutorialTextLength / 2),
+                        Screen.HALF_HEIGHT - 30 + 7,
+                        15 // Black
+                    )
+
+                    // Underline the title:
+                    screen().fillRect(
+                        headerX - (tutorialTextLength / 2) - 1,
+                        Screen.HALF_HEIGHT - 30 + 16,
+                        tutorialTextLength,
+                        2,
+                        15 // Black
+                    )
+
+                    if (this.currentlyCancelling)
+                        screen().printCenter("Cancelling...", Screen.HALF_HEIGHT - 9, 15)
+
+                    // Draw button prompts:
+                    screen().print(
+                        "Yes",
+                        Screen.HALF_WIDTH - 48,
+                        Screen.HALF_HEIGHT + 20,
+                        15
+                    )
+
+                    screen().print(
+                        "No",
+                        Screen.HALF_WIDTH + 33,
+                        Screen.HALF_HEIGHT + 20,
+                        15
+                    )
+
+                    // White boxes behind yes & no btns:
+                    screen().fillRect(
+                        Screen.HALF_WIDTH - 47,
+                        Screen.HALF_HEIGHT + 6,
+                        12,
+                        12,
+                        1
+                    )
+
+                    screen().fillRect(
+                        Screen.HALF_WIDTH + 34,
+                        Screen.HALF_HEIGHT + 6,
+                        12,
+                        12,
+                        1
+                    )
+
+                    this.yesBtn.draw()
+                    this.noBtn.draw()
                 }
             }
         }

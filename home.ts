@@ -1,65 +1,83 @@
 namespace microcode {
     export class Home extends CursorScene {
-        private recordDataBtn: Button
         private liveDataBtn: Button
+        private recordDataBtn: Button
+        private distributedLoggingBtn: Button
         private viewBtn: Button
+        private tagline: string;
 
         constructor(app: App) {
             super(app)
+            this.tagline = ["Lets measure!", "Hello :)", "Lets experiment!", "Mini-measurer",
+                "Record & view", "Data Science toolkit", "Start experimenting!"][randint(0, 6)]
         }
 
         /* override */ startup() {
             super.startup()
 
+            const y = 25
+
             this.liveDataBtn = new Button({
                 parent: null,
-                // style: ButtonStyles.Transparent,
+                style: ButtonStyles.Transparent,
                 icon: "linear_graph_1",
-                ariaId: "linear_graph",
-                x: -50,
-                y: 30,
+                ariaId: "Real-time Data",
+                x: -58,
+                y,
                 onClick: () => {
-                    // this.app.popScene()
-                    // this.app.pushScene(new SensorSelect(this.app, CursorSceneEnum.LiveDataViewer))
+                    this.app.popScene()
+                    this.app.pushScene(new SensorSelect(this.app, CursorSceneEnum.LiveDataViewer))
                 },
             })
 
             this.recordDataBtn = new Button({
                 parent: null,
-                // style: ButtonStyles.Transparent,
+                style: ButtonStyles.Transparent,
                 icon: "edit_program",
-                ariaId: "Record",
-                x: 0,
-                y: 30,
+                ariaId: "Log Data",
+                x: -20,
+                y,
                 onClick: () => {
-                    // this.app.popScene()
-                    // this.app.pushScene(new SensorSelect(this.app, CursorSceneEnum.MeasurementConfigSelect))
+                    this.app.popScene()
+                    this.app.pushScene(new SensorSelect(this.app, CursorSceneEnum.RecordingConfigSelect))
+                },
+            })
+
+            this.distributedLoggingBtn = new Button({
+                parent: null,
+                style: ButtonStyles.Transparent,
+                icon: "radio_set_group",
+                ariaId: "Command Mode",
+                x: 20,
+                y,
+                onClick: () => {
+                    this.app.popScene()
+                    // this.app.pushScene(new DistributedLoggingScreen(this.app)) // Temp disabled elements relating to callbackObj (no mem)
                 },
             })
 
             this.viewBtn = new Button({
                 parent: null,
-                // style: ButtonStyles.Transparent,
+                style: ButtonStyles.Transparent,
                 icon: "largeDisk",
-                ariaId: "View",
-                x: 50,
-                y: 30,
+                ariaId: "View Data",
+                x: 58,
+                y,
                 onClick: () => {
-                    // this.app.popScene()
-                    // this.app.pushScene(new DataViewSelect(this.app))
+                    this.app.popScene()
+                    this.app.pushScene(new DataViewSelect(this.app))
                 },
             })
 
-            const btns: Button[] = [this.liveDataBtn, this.recordDataBtn, this.viewBtn]
-
+            const btns: Button[] = [this.liveDataBtn, this.recordDataBtn, this.distributedLoggingBtn, this.viewBtn]
             this.navigator.addButtons(btns)
         }
 
         private drawVersion() {
-            const font = bitmap.font5
+            const font = bitmaps.font5
             Screen.print(
-                "Prototype 12",
-                Screen.RIGHT_EDGE - font.charWidth * "Prototype 12".length,
+                "v1.5.2",
+                Screen.RIGHT_EDGE - font.charWidth * "v1.5.2".length,
                 Screen.BOTTOM_EDGE - font.charHeight - 2,
                 0xb,
                 font
@@ -75,47 +93,49 @@ namespace microcode {
                 Screen.HEIGHT,
                 0xc
             )
+
             this.yOffset = Math.min(0, this.yOffset + 2)
             const t = control.millis()
             const dy = this.yOffset == 0 ? (Math.idiv(t, 800) & 1) - 1 : 0
             const margin = 2
-            const OFFSET = (Screen.HEIGHT >> 1) - wordLogo.height - margin
+            const OFFSET = (Screen.HEIGHT >> 1) - wordLogo.height - margin - 9
             const y = Screen.TOP_EDGE + OFFSET //+ dy
-            Screen.drawTransparentBitmap(
+            Screen.drawTransparentImage(
                 wordLogo,
                 Screen.LEFT_EDGE + ((Screen.WIDTH - wordLogo.width) >> 1)// + dy
                 ,
                 y + this.yOffset
             )
-            Screen.drawTransparentBitmap(
+            Screen.drawTransparentImage(
                 microbitLogo,
                 Screen.LEFT_EDGE +
-                    ((Screen.WIDTH - microbitLogo.width) >> 1) + dy
-                    ,
+                ((Screen.WIDTH - microbitLogo.width) >> 1) + dy
+                ,
                 y - wordLogo.height + this.yOffset + margin
             )
+
             if (!this.yOffset) {
-                const tagline = resolveTooltip("tagline")
                 Screen.print(
-                    tagline,
+                    this.tagline,
                     Screen.LEFT_EDGE +
-                        ((Screen.WIDTH + wordLogo.width) >> 1) 
-                        + dy
-                        -
-                        microcode.font.charWidth * tagline.length,
+                    ((Screen.WIDTH + wordLogo.width) >> 1)
+                    + dy
+                    -
+                    microcode.font.charWidth * this.tagline.length,
                     Screen.TOP_EDGE +
-                        OFFSET +
-                        wordLogo.height +
-                        dy +
-                        this.yOffset +
-                        1,
+                    OFFSET +
+                    wordLogo.height +
+                    dy +
+                    this.yOffset +
+                    3,
                     0xb,
                     microcode.font
                 )
             }
 
-            this.recordDataBtn.draw()
             this.liveDataBtn.draw()
+            this.recordDataBtn.draw()
+            this.distributedLoggingBtn.draw()
             this.viewBtn.draw()
 
             this.drawVersion()
